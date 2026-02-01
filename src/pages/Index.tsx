@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Position } from "@/types/portfolio";
+import { PortfolioSummary, Position } from "@/types/portfolio";
 import { PositionsTable } from "@/components/PositionsTable";
+import { Summary } from "../components/Summary";
 import { useToast } from "@/hooks/use-toast";
 
 const API_BASE_URL = "http://localhost:4000/api";
@@ -8,10 +9,13 @@ const API_BASE_URL = "http://localhost:4000/api";
 const Index = () => {
   const [positions, setPositions] = useState<Position[]>([]);
   const [isLoadingPositions, setIsLoadingPositions] = useState(true);
+  const [summary, setSummary] = useState<PortfolioSummary | null>(null);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchPositions();
+    fetchSummary();
   }, []);
 
   const fetchPositions = async () => {
@@ -34,6 +38,26 @@ const Index = () => {
     }
   };
 
+  const fetchSummary = async () => {
+    try {
+      setIsLoadingSummary(true);
+      const response = await fetch(`${API_BASE_URL}/portfolio/summary`);
+      if (!response.ok) throw new Error("Failed to fetch portfolio summary");
+      const data = await response.json();
+      setSummary(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          "Failed to load portfolio summary. Make sure the backend is running.",
+        variant: "destructive",
+      });
+      console.error("Error fetching summary:", error);
+    } finally {
+      setIsLoadingSummary(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -44,22 +68,37 @@ const Index = () => {
           </p>
         </div>
 
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Positions</h2>
-            {isLoadingPositions ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Loading positions...
-              </div>
-            ) : positions.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No positions found
-              </div>
-            ) : (
-              <PositionsTable positions={positions} />
-            )}
-          </div>
+
+        <div className="space-y-4 mb-8">
+          <h2 className="text-2xl font-bold mb-4">Summary</h2>
+          {isLoadingSummary ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading summary...
+            </div>
+          ) : summary ? (
+            <Summary summary={summary} />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Summary unavailable
+            </div>
+          )}
         </div>
+
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold mb-4">Positions</h2>
+          {isLoadingPositions ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading positions...
+            </div>
+          ) : positions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No positions found
+            </div>
+          ) : (
+            <PositionsTable positions={positions} />
+          )}
+        </div>
+
       </div>
     </div>
   );
