@@ -25,3 +25,14 @@
 - **Validation trade-off:** chose to validate against known statuses rather than accept any string. This gives clearer errors and avoids silent empty results on typos, at the cost of keeping `POSITION_STATUSES` in sync.
 - **Return shape:** the helper returns `{ filteredPositions, error }` to keep error handling explicit and simple at the call site.
 - **UI clarity:** added a small “Filter by status” label above the buttons to make it clear they’re filters rather than just a status toggle.
+
+## Task 3: Handle slow API performance 🐌
+
+### Status
+- Summary fetches now use request cancellation to avoid stale responses
+- Added a simple in-memory cache by status to reuse previously fetched summaries
+
+### Design notes
+- **Cache rationale:** caching makes repeat selections instant, reducing the impact of the 2-second delay for previously viewed filters.
+- **Trade-off:** cache is in-memory and resets on refresh; it avoids extra complexity like persistence or invalidation since the dataset is static in this exercise.
+- **Concurrency safety:** aborting in-flight requests prevents older responses from overwriting newer selections when users click quickly.

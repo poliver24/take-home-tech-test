@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PortfolioSummary, Position } from "@/types/portfolio";
 import { PositionsTable } from "@/components/PositionsTable";
 import { Summary, type SummaryStatus } from "../components/Summary";
@@ -12,6 +12,9 @@ const Index = () => {
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
   const [summaryStatus, setSummaryStatus] = useState<SummaryStatus>("all");
+  const summaryCache = useRef<Partial<Record<SummaryStatus, PortfolioSummary>>>(
+    {},
+  );
   const { toast } = useToast();
 
   useEffect(() => {
@@ -42,14 +45,25 @@ const Index = () => {
     }
   };
 
-  const fetchSummary = async (status: SummaryStatus) => {
+  const fetchSummary = async (
+    status: SummaryStatus
+  ) => {
+    const cachedSummary = summaryCache.current[status];
+    if (cachedSummary) {
+      setSummary(cachedSummary);
+      setIsLoadingSummary(false);
+      return;
+    }
+
     const query = status === "all" ? "" : `?status=${status}`;
 
     try {
       setIsLoadingSummary(true);
-      const response = await fetch(`${API_BASE_URL}/portfolio/summary${query}`);
+      const response = await fetch(
+        `${API_BASE_URL}/portfolio/summary${query}`);
       if (!response.ok) throw new Error("Failed to fetch portfolio summary");
       const data = await response.json();
+      summaryCache.current[status] = data;
       setSummary(data);
     } catch (error) {
       toast({
