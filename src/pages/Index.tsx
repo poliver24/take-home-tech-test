@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { Position } from "@/types/portfolio";
+import { useEffect, useRef, useState } from "react";
+import { PortfolioSummary, Position } from "@/types/portfolio";
 import { PositionsTable } from "@/components/PositionsTable";
+import { Summary, type SummaryStatus } from "../components/Summary";
 import { useToast } from "@/hooks/use-toast";
 
 const API_BASE_URL = "http://localhost:4000/api";
@@ -8,11 +9,21 @@ const API_BASE_URL = "http://localhost:4000/api";
 const Index = () => {
   const [positions, setPositions] = useState<Position[]>([]);
   const [isLoadingPositions, setIsLoadingPositions] = useState(true);
+  const [summary, setSummary] = useState<PortfolioSummary | null>(null);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(true);
+  const [summaryStatus, setSummaryStatus] = useState<SummaryStatus>("all");
+  const summaryCache = useRef<Partial<Record<SummaryStatus, PortfolioSummary>>>(
+    {},
+  );
   const { toast } = useToast();
 
   useEffect(() => {
     fetchPositions();
   }, []);
+
+  useEffect(() => {
+    fetchSummary(summaryStatus);
+  }, [summaryStatus]);
 
   const fetchPositions = async () => {
     try {
@@ -34,6 +45,39 @@ const Index = () => {
     }
   };
 
+  const fetchSummary = async (
+    status: SummaryStatus
+  ) => {
+    const cachedSummary = summaryCache.current[status];
+    if (cachedSummary) {
+      setSummary(cachedSummary);
+      setIsLoadingSummary(false);
+      return;
+    }
+
+    const query = status === "all" ? "" : `?status=${status}`;
+
+    try {
+      setIsLoadingSummary(true);
+      const response = await fetch(
+        `${API_BASE_URL}/portfolio/summary${query}`);
+      if (!response.ok) throw new Error("Failed to fetch portfolio summary");
+      const data = await response.json();
+      summaryCache.current[status] = data;
+      setSummary(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          "Failed to load portfolio summary. Make sure the backend is running.",
+        variant: "destructive",
+      });
+      console.error("Error fetching summary:", error);
+    } finally {
+      setIsLoadingSummary(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -44,22 +88,41 @@ const Index = () => {
           </p>
         </div>
 
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Positions</h2>
-            {isLoadingPositions ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Loading positions...
-              </div>
-            ) : positions.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No positions found
-              </div>
-            ) : (
-              <PositionsTable positions={positions} />
-            )}
-          </div>
+
+        <div className="space-y-4 mb-8">
+          <h2 className="text-2xl font-bold mb-4">Summary</h2>
+          {isLoadingSummary ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading summary...
+            </div>
+          ) : summary ? (
+            <Summary
+              summary={summary}
+              status={summaryStatus}
+              onStatusChange={setSummaryStatus}
+            />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Summary unavailable
+            </div>
+          )}
         </div>
+
+        <div className="space-y-6">
+          <h2 className="text-2xl font-bold mb-4">Positions</h2>
+          {isLoadingPositions ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading positions...
+            </div>
+          ) : positions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No positions found
+            </div>
+          ) : (
+            <PositionsTable positions={positions} />
+          )}
+        </div>
+
       </div>
     </div>
   );

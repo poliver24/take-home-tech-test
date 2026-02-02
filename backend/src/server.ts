@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { positions } from "./data/portfolio";
 import { computeSummary } from "./services/portfolioSummary";
+import { filterPositionsByStatus } from "./services/positionFilters";
 
 const app = express();
 const PORT = 4000;
@@ -24,7 +25,13 @@ app.get("/api/portfolio/summary", async (req, res) => {
   // Intentional 2-second delay - DO NOT REMOVE OR MODIFY
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
-  const summary = computeSummary(positions);
+  const { status } = req.query;
+  const { filteredPositions, error } = filterPositionsByStatus(positions, status);
+  if (error) {
+    res.status(400).json({ error });
+    return;
+  }
+  const summary = computeSummary(filteredPositions);
   res.json(summary);
 });
 

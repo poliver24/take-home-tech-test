@@ -1,4 +1,5 @@
-export type PositionStatus = "available" | "retired";
+export const POSITION_STATUSES = ["available", "retired"] as const;
+export type PositionStatus = (typeof POSITION_STATUSES)[number];
 
 export type Position = {
   id: string;
